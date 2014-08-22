@@ -1,0 +1,147 @@
+<style>
+#cursor { position: fixed; top: -100px; left: -100px; margin-left: -5px; margin-top: -5px; width: 5px; height: 5px; border: 2px solid black; border-radius: 20px;
+</style>
+
+<canvas id="hunterlab"></canvas>
+<div id="cursor"></div>
+
+<br>
+L <input type="range" min="0" max="100" value="100" id="hunter_L">
+<br>
+a <input type="range" min="-86.185" max="98.294" id="hunter_a">
+<br>
+b <input type="range" min="-107.863" max="94.482" id="hunter_b">
+<br>
+<br>
+<input type="text" id="selected">
+<input type="text" id="hex">
+
+<script>
+var xyz = [0,0,0]
+var rgb = [0,0,0]
+
+w = hunterlab.width = 512
+h = hunterlab.height = 512
+ww = w-1, hh = h-1
+
+L_range = [0, 100]
+a_range = [-86.185, 98.254]
+b_range = [-107.863, 94.482]
+
+ctx = hunterlab.getContext('2d')
+
+ii = jj = -100
+down = false
+
+hunter_L.oninput = axis('L')
+hunter_a.oninput = axis('a')
+hunter_b.oninput = axis('b')
+hunterlab.onmousedown = function (e){
+  e.preventDefault()
+  down = true
+  ii = e.clientX - hunterlab.offsetLeft
+  jj = e.clientY - hunterlab.offsetTop
+  pick()
+}
+hunterlab.onmousemove = function(e){
+  if (! down) return
+  ii = e.clientX - hunterlab.offsetLeft
+  jj = e.clientY - hunterlab.offsetTop
+  pick()
+}
+document.body.onmouseup = function (e){
+  down = false
+}
+function pick () {
+  x = mix( ii/ww, x_range[0], x_range[1] )
+  y = mix( jj/hh, y_range[0], y_range[1] )
+  rgb = xyz2rgb(fn(val, x, y))
+  selected.value = "rgb(" + rgb.map(Math.round).join(",") + ")"
+  hex.value = "#" + rgb.map(Math.round).map(function(n){ var s = n.toString(16); return s.length == 1 ? "0"+s : s }).join("")
+  cursor.style.left = (ii + hunterlab.offsetTop) + "px"
+  cursor.style.top = (jj + hunterlab.offsetTop) + "px"
+}
+
+hunter_a.value = hunter_b.value = 0
+
+mode = "L"
+imageData = ctx.createImageData(w,h)
+data = imageData.data
+axis('L')()
+
+function axis (c) { return function(){ mode = c; paint() } }
+
+function paint () {
+  var fn_body = (hunterlab2xyz + "").split("{")[1].split("}")[0]
+  var fn_body = (hunterlab2xyz + "").split("{")[1].split("}")[0]
+  switch (mode) {
+    case 'L':
+      val = parseFloat(hunter_L.value)
+      x_range = a_range
+      y_range = b_range
+      fn = new Function('L','a','b', fn_body)
+      break
+    case 'a':
+      x_range = L_range
+      val = hunter_a.value
+      y_range = b_range
+      fn = new Function('a','L','b', fn_body)
+      break
+    case 'b':
+      x_range = L_range
+      y_range = a_range
+      val = hunter_b.value
+      fn = new Function('b','L','a', fn_body)
+      break
+  }
+  for (var i = 0; i < w; i++) {
+    for (var j = 0; j < h; j++) {
+      x = mix( i/ww, x_range[0], x_range[1] )
+      y = mix( j/hh, y_range[0], y_range[1] )
+      t = (j*w + i) * 4
+      rgb = xyz2rgb(fn(val, x, y))
+      data[t] = Math.round( rgb[0] )
+      data[t+1] = Math.round( rgb[1] )
+      data[t+2] = Math.round( rgb[2] )
+      data[t+3] = 255
+    }
+  }
+  ctx.putImageData(imageData,0,0)
+  if (ii > -1) { pick() }
+}
+
+function mix(n,a,b){ return n*a + (1-n)*b }
+function clamp(n,a,b){ return n<a?a:n<b?n:b }
+function hunterlab2xyz (L,a,b) {
+  var_Y = L / 10
+  var_X = a / 17.5 * L / 10
+  var_Z = b / 7 * L / 10
+
+  Y = Math.pow(var_Y, 2)
+  X = ( var_X + Y ) / 1.02
+  Z = -( var_Z - Y ) / 0.847
+  xyz = [X,Y,Z]
+}
+function xyz2rgb(){
+  var var_X = xyz[0] / 100        //X from 0 to  95.047      (Observer = 2°, Illuminant = D65)
+  var var_Y = xyz[1] / 100        //Y from 0 to 100.000
+  var var_Z = xyz[2] / 100        //Z from 0 to 108.883
+
+  var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986
+  var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415
+  var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570
+
+  if ( var_R > 0.0031308 ) var_R = 1.055 * Math.pow( var_R, 1 / 2.4 ) - 0.055
+  else                     var_R = 12.92 * var_R
+  if ( var_G > 0.0031308 ) var_G = 1.055 * Math.pow( var_G, 1 / 2.4 ) - 0.055
+  else                     var_G = 12.92 * var_G
+  if ( var_B > 0.0031308 ) var_B = 1.055 * Math.pow( var_B, 1 / 2.4 ) - 0.055
+  else                     var_B = 12.92 * var_B
+
+  rgb[0] = clamp(var_R * 255, 0, 255)
+  rgb[1] = clamp(var_G * 255, 0, 255)
+  rgb[2] = clamp(var_B * 255, 0, 255)
+  return rgb
+}
+
+</script>
