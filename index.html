@@ -122,7 +122,6 @@ function hex_string (rgb) { return "#" + rgb.map(Math.round).map(function(n){ va
 function axis (c) { return function(){ mode = c; paint() } }
 function paint () {
   var fn_body = (hunterlab2xyz + "").split("{")[1].split("}")[0]
-  var fn_body = (hunterlab2xyz + "").split("{")[1].split("}")[0]
   switch (mode) {
     case 'L':
       val = parseFloat(hunter_L.value)
