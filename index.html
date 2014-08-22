@@ -1,9 +1,18 @@
 <style>
-#cursor { position: fixed; top: -100px; left: -100px; margin-left: -5px; margin-top: -5px; width: 5px; height: 5px; border: 2px solid black; border-radius: 20px;
+#cursor_to,#cursor { position: fixed; top: -100px; left: -100px; margin-left: -5px; margin-top: -5px; width: 5px; height: 5px; border: 2px solid black; border-radius: 20px; pointer-events: none; }
+#cursor_to { border-color: #888; }
+#gradients { visibility: hidden; }
+.swatch { display: inline-block; width: 16px; height: 16px; border: 1px solid black; margin-right: 10px; }
+label { font-size: 90%; }
 </style>
 
-<canvas id="hunterlab"></canvas>
 <div id="cursor"></div>
+<div id="cursor_to"></div>
+
+<table border="0">
+<tr><td>
+<canvas id="hunterlab"></canvas>
+</td><td>
 
 <br>
 L <input type="range" min="0" max="100" value="100" id="hunter_L">
@@ -15,6 +24,19 @@ b <input type="range" min="-107.863" max="94.482" id="hunter_b">
 <br>
 <input type="text" id="selected">
 <input type="text" id="hex">
+<br>
+<br>
+
+<div id="gradients">
+  <div class="swatch"></div><label></label><br>
+  <div class="swatch"></div><label></label><br>
+  <div class="swatch"></div><label></label><br>
+  <div class="swatch"></div><label></label><br>
+  <div class="swatch"></div><label></label><br>
+  <div class="swatch"></div><label></label><br>
+</div>
+</td></tr>
+</table>
 
 <script>
 var xyz = [0,0,0]
@@ -31,36 +53,8 @@ b_range = [-107.863, 94.482]
 ctx = hunterlab.getContext('2d')
 
 ii = jj = -100
+iii = jjj = -100
 down = false
-
-hunter_L.oninput = axis('L')
-hunter_a.oninput = axis('a')
-hunter_b.oninput = axis('b')
-hunterlab.onmousedown = function (e){
-  e.preventDefault()
-  down = true
-  ii = e.clientX - hunterlab.offsetLeft
-  jj = e.clientY - hunterlab.offsetTop
-  pick()
-}
-hunterlab.onmousemove = function(e){
-  if (! down) return
-  ii = e.clientX - hunterlab.offsetLeft
-  jj = e.clientY - hunterlab.offsetTop
-  pick()
-}
-document.body.onmouseup = function (e){
-  down = false
-}
-function pick () {
-  x = mix( ii/ww, x_range[0], x_range[1] )
-  y = mix( jj/hh, y_range[0], y_range[1] )
-  rgb = xyz2rgb(fn(val, x, y))
-  selected.value = "rgb(" + rgb.map(Math.round).join(",") + ")"
-  hex.value = "#" + rgb.map(Math.round).map(function(n){ var s = n.toString(16); return s.length == 1 ? "0"+s : s }).join("")
-  cursor.style.left = (ii + hunterlab.offsetTop) + "px"
-  cursor.style.top = (jj + hunterlab.offsetTop) + "px"
-}
 
 hunter_a.value = hunter_b.value = 0
 
@@ -69,8 +63,63 @@ imageData = ctx.createImageData(w,h)
 data = imageData.data
 axis('L')()
 
-function axis (c) { return function(){ mode = c; paint() } }
+hunter_L.oninput = axis('L')
+hunter_a.oninput = axis('a')
+hunter_b.oninput = axis('b')
+hunterlab.onmousedown = function (e){
+  e.preventDefault()
+  down = true
+  read(e)
+  pick()
+}
+hunterlab.onmousemove = function(e){
+  if (! down) return
+  read(e)
+  pick()
+}
+document.body.onmouseup = function (e){
+  down = false
+}
+function read(e) {
+  if (e.shiftKey) {
+    iii = e.clientX - hunterlab.offsetLeft
+    jjj = e.clientY - hunterlab.offsetTop
+  }
+  else {
+    ii = e.clientX - hunterlab.offsetLeft
+    jj = e.clientY - hunterlab.offsetTop
+  }
+}
+function pick () {
+  if (ii > -1) {
+    x = mix( ii/ww, x_range[0], x_range[1] )
+    y = mix( jj/hh, y_range[0], y_range[1] )
+    rgb = xyz2rgb(fn(val, x, y))
+    selected.value = rgb_string(rgb)
+    hex.value = hex_string(rgb)
+  }
+  cursor.style.left = (ii + hunterlab.offsetTop) + "px"
+  cursor.style.top = (jj + hunterlab.offsetTop) + "px"
+  cursor_to.style.left = (iii + hunterlab.offsetTop) + "px"
+  cursor_to.style.top = (jjj + hunterlab.offsetTop) + "px"
+  gradient()
+}
+function gradient () {
+  if (ii < -1 && iii < -1) return
+  swatches = document.querySelectorAll('.swatch')
+  labels = document.querySelectorAll('label')
+  for (var k = 0; k < 6; k++) {
+    x = mix( mix(k/5, ii, iii)/w, x_range[0], x_range[1] )
+    y = mix( mix(k/5, jj, jjj)/h, y_range[0], y_range[1] )
+    rgb = xyz2rgb(fn(val, x, y))
+    swatches[k].style.backgroundColor = labels[k].innerHTML = hex_string(rgb)
+  }
+  gradients.style.visibility = "visible"
+}
+function rgb_string (rgb) { return "rgb(" + rgb.map(Math.round).join(",") + ")" }
+function hex_string (rgb) { return "#" + rgb.map(Math.round).map(function(n){ var s = n.toString(16); return s.length == 1 ? "0"+s : s }).join("") }
 
+function axis (c) { return function(){ mode = c; paint() } }
 function paint () {
   var fn_body = (hunterlab2xyz + "").split("{")[1].split("}")[0]
   var fn_body = (hunterlab2xyz + "").split("{")[1].split("}")[0]
