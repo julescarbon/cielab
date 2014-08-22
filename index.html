@@ -131,14 +131,14 @@ function paint () {
       break
     case 'a':
       x_range = L_range
-      val = hunter_a.value
+      val = parseFloat(hunter_a.value)
       y_range = b_range
       fn = new Function('a','L','b', fn_body)
       break
     case 'b':
       x_range = L_range
       y_range = a_range
-      val = hunter_b.value
+      val = parseFloat(hunter_b.value)
       fn = new Function('b','L','a', fn_body)
       break
   }
